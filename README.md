@@ -6,7 +6,7 @@ Ein Swift-Package für macOS, das eine App automatisch in den Programme-Ordner v
 
 Mit Swift Package Manager:
 ```swift
-.package(url: "https://github.com/DeinUser/MoveToApplications.git", from: "1.0.0")
+.package(url: "https://github.com/webfalter/MoveToApplications.git", from: "1.0.0")
 ```
 
 ## Nutzung
