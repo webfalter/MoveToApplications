@@ -1,5 +1,6 @@
 # MoveToApplications
 [![download-badge](https://img.shields.io/github/downloads/webfalter/MoveToApplications/total.svg?style=flat-square "Download status")](https://github.com/webfalter/MoveToApplications/releases/latest "Download status")
+
 Ein Swift-Package für macOS, das eine App automatisch in den Programme-Ordner verschieben kann.
 
 ## Installation
