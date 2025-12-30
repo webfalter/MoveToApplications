@@ -35,27 +35,40 @@ extension MoveToApplications {
 
         return true
     }
-
+    
     private static func promptUserAndMove() -> Bool {
         let alert = NSAlert()
-        alert.messageText = "In Programme verschieben?"
-        alert.informativeText = "Ich kann mich automatisch in den Programme-Ordner verschieben."
+        alert.messageText = NSLocalizedString(
+            "MOVE_APP_TITLE",
+            comment: "Dialog title asking to move app to Applications"
+        )
+        alert.informativeText = NSLocalizedString(
+            "MOVE_APP_MESSAGE",
+            comment: "Explanation about moving app to Applications"
+        )
         alert.alertStyle = .informational
         alert.showsSuppressionButton = true
-
-        alert.addButton(withTitle: "Nicht verschieben")
-        alert.addButton(withTitle: "Verschieben")
-
+    
+        alert.addButton(withTitle: NSLocalizedString(
+            "MOVE_APP_SKIP",
+            comment: "Button: Do not move the app"
+        ))
+        alert.addButton(withTitle: NSLocalizedString(
+            "MOVE_APP_CONFIRM",
+            comment: "Button: Move the app"
+        ))
+    
         let response = alert.runModal()
-
+    
         if let sup = alert.suppressionButton, sup.state == .on {
             UserDefaults.standard.set(true, forKey: "MoveToAppsSuppress")
         }
-
+    
         guard response == .alertSecondButtonReturn else { return false }
-
+    
         return moveApp()
     }
+    
 
     private static func promptUserAndMoveAsync() async -> Bool {
         await withCheckedContinuation { cont in
