@@ -1,118 +1,59 @@
+//
+//  MoveToApplications.swift
+//  MoveToApplications
+//
+//  Created by Torsten Hofmann.
+//  Copyright © 2025–2026 Torsten Hofmann. MIT License.
+//
+
 import AppKit
 
+/// Bietet beim Start an, die App in den Programme-Ordner zu verschieben.
+///
+/// ```swift
+/// func applicationDidFinishLaunching(_ notification: Notification) {
+///     MoveToApplications.checkAndPrompt()
+/// }
+/// ```
 public enum MoveToApplications {
-    
+
+    /// UserDefaults-Schlüssel für „Nicht mehr fragen“.
+    public static let suppressKey = "MoveToAppsSuppress"
+
+    /// Prüft, ob die App außerhalb des Programme-Ordners läuft, fragt nach und verschiebt sie.
+    ///
+    /// Nach erfolgreichem Verschieben wird die App aus dem Programme-Ordner neu gestartet
+    /// und die laufende Instanz beendet.
+    /// - Returns: `true`, wenn verschoben wurde (die App beendet sich dann gleich), sonst `false`.
+    @MainActor
     @discardableResult
     public static func checkAndPrompt() -> Bool {
-        guard shouldMove() else { return false }
-        return promptUserAndMove()
+        guard shouldOfferMove else { return false }
+        return Mover.promptAndMove()
     }
 
+    /// async-Variante von ``checkAndPrompt()``.
+    @MainActor
+    @discardableResult
     public static func checkAndPromptAsync() async -> Bool {
-        guard shouldMove() else { return false }
-        return await promptUserAndMoveAsync()
-    }
-}
-
-extension MoveToApplications {
-
-    private static func shouldMove() -> Bool {
-        let bundlePath = Bundle.main.bundlePath
-
-        let appPaths = [
-            "/Applications",
-            FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent("Applications").path
-        ]
-
-        if appPaths.contains(where: { bundlePath.hasPrefix($0) }) {
-            return false
-        }
-
-        if UserDefaults.standard.bool(forKey: "MoveToAppsSuppress") {
-            return false
-        }
-
-        return true
-    }
-    
-    private static func promptUserAndMove() -> Bool {
-        let alert = NSAlert()
-        alert.messageText = NSLocalizedString(
-            "MOVE_APP_TITLE",
-            comment: "Dialog title asking to move app to Applications"
-        )
-        alert.informativeText = NSLocalizedString(
-            "MOVE_APP_MESSAGE",
-            comment: "Explanation about moving app to Applications"
-        )
-        alert.alertStyle = .informational
-        alert.showsSuppressionButton = true
-    
-        alert.addButton(withTitle: NSLocalizedString(
-            "MOVE_APP_SKIP",
-            comment: "Button: Do not move the app"
-        ))
-        alert.addButton(withTitle: NSLocalizedString(
-            "MOVE_APP_CONFIRM",
-            comment: "Button: Move the app"
-        ))
-    
-        let response = alert.runModal()
-    
-        if let sup = alert.suppressionButton, sup.state == .on {
-            UserDefaults.standard.set(true, forKey: "MoveToAppsSuppress")
-        }
-    
-        guard response == .alertSecondButtonReturn else { return false }
-    
-        return moveApp()
-    }
-    
-
-    private static func promptUserAndMoveAsync() async -> Bool {
-        await withCheckedContinuation { cont in
-            DispatchQueue.main.async {
-                let result = promptUserAndMove()
-                cont.resume(returning: result)
-            }
-        }
+        checkAndPrompt()
     }
 
-    private static func moveApp() -> Bool {
-        let fm = FileManager.default
-        let source = Bundle.main.bundlePath
-        let appName = (source as NSString).lastPathComponent
+    /// `true`, wenn die App bereits aus /Programme oder ~/Programme läuft.
+    public static var isInApplicationsFolder: Bool {
+        Paths.isInApplicationsFolder(Translocation.originalURL(for: Bundle.main.bundleURL).path)
+    }
 
-        let targets = [
-            "/Applications",
-            fm.homeDirectoryForCurrentUser.appendingPathComponent("Applications").path
-        ]
+    /// Setzt „Nicht mehr fragen“ zurück, z. B. für einen Menüpunkt in den Einstellungen.
+    public static func resetSuppression() {
+        UserDefaults.standard.removeObject(forKey: suppressKey)
+    }
 
-        var destination: String?
-        for t in targets {
-            if fm.isWritableFile(atPath: t) {
-                destination = (t as NSString).appendingPathComponent(appName)
-                break
-            }
-        }
-
-        guard let dest = destination else { return false }
-
-        try? fm.removeItem(atPath: dest)
-
-        do {
-            try fm.copyItem(atPath: source, toPath: dest)
-        } catch {
-            print("Copy error:", error)
-            return false
-        }
-
-        let task = Process()
-        task.launchPath = "/usr/bin/open"
-        task.arguments = [dest]
-        task.launch()
-
-        exit(0)
+    /// Ob beim Start gefragt werden soll.
+    static var shouldOfferMove: Bool {
+        // Nur echte App-Bundles – nicht bei `swift run` oder Tests.
+        guard Bundle.main.bundleURL.pathExtension == "app" else { return false }
+        guard !UserDefaults.standard.bool(forKey: suppressKey) else { return false }
+        return !isInApplicationsFolder
     }
 }
